@@ -23,13 +23,11 @@ namespace {
         Function *branchTaken; // Keeps a counter of Taken branches
         Function *printFunction; // Prints Statistics
 
-        Module *Mod;
         StringRef functionName; // The name of the function being currently analyzed
 
         BranchBias() : ModulePass (ID) {}
 
         virtual bool runOnModule (Module &M) {
-            Mod = &M;
 
             // Initialize the pointers to the functions
             branchTaken = cast<Function> (M.getOrInsertFunction("_Z11branchTakenPc", 
@@ -73,6 +71,7 @@ namespace {
         virtual bool runOnBasicBlock (Function::iterator &BB) {
             
             Value *myStr;
+            bool isFirst = true;
 
             for(BasicBlock::iterator BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
             {
@@ -80,11 +79,15 @@ namespace {
                 if(isa<BranchInst>(&(*BI)) ) {
                     BranchInst *CI = dyn_cast<BranchInst>(BI);
                     // We only care about conditional branches
-                    if (CI->isUnconditional()) continue;
+                    if (CI->isUnconditional()) {
+                        continue;
+                    }
 
                     // It's either Taken or Not so it must have 
                     // exactly two successor blocks
-                    if (CI->getNumSuccessors() != 2) continue;
+                    if (CI->getNumSuccessors() != 2) {
+                        continue;
+                    }
 
                     // INSTRUMENTATION
 
@@ -93,8 +96,8 @@ namespace {
 
                     // Get the "Taken" Basic Block and move to its first instruction
                     BasicBlock *block = CI->getSuccessor(0);
-                    BasicBlock::iterator takenIns = block->begin();
-                    takenIns++;
+                    BasicBlock::iterator takenIns = block->getFirstInsertionPt();
+                    //takenIns++;
 
                     // Create an IRBuilder instance and set the insert point 
                     // to the beginning of the "Taken" basic block
@@ -105,8 +108,9 @@ namespace {
                     // call the branchTaken function with it
 
                     // Only create the string on the first block
-                    if (BI == BB->begin()) {
+                    if (isFirst) {
                         myStr = builder.CreateGlobalStringPtr(functionName, "myStr");
+                        isFirst = false;
                     }
                     builder.CreateCall (branchTaken, myStr);
 
