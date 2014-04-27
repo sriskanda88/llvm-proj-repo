@@ -9,7 +9,6 @@ map <string, int> functionTotal;
 map <string, int> dynamicInstructionCountMap;
 
 void branchTaken (char* functionName) {
-    //cout << "Branch Taken in "<<functionName<<endl;
     string temp(functionName);
     if (functionMapping.count(temp) == 0) {
         functionMapping[temp] = 1;
@@ -20,7 +19,6 @@ void branchTaken (char* functionName) {
 }
 
 void foundBranch (char* functionName) {
-    //cout << "Branch Found in "<<functionName<<endl;
     //Count the total branches
     string temp (functionName);
     if (functionTotal.count(temp) == 0) {
@@ -33,23 +31,21 @@ void foundBranch (char* functionName) {
 
 void printStatistics () {
 
-    cout<<endl<<"STATISTICS:"<<endl<<"-----------"<<endl<<endl;
-    // No branches in benchmark
-    if (functionMapping.count("main") == 0) {
-        printf ("%15s %5s %5s %5s\n", "FUNCTION", "BIAS", "TAKEN", "TOTAL");
-        printf ("%15s %5s %5d %5d\n", "main", "NaN", 0, 0);
-        return;
-    }
+        cout<<endl<<"STATISTICS:"<<endl<<"-----------"<<endl<<endl;
+        // No branches in benchmark
+        if (functionMapping.size() == 0) {
+            printf ("%15s %5s %5s %5s\n", "FUNCTION", "BIAS", "TAKEN", "TOTAL");
+            printf ("%15s %5s %5d %5d\n", "main", "NaN", 0, 0);
+            return;
+        }
 
-    printf ("%15s %5s %5s %5s\n", "FUNCTION", "BIAS", "TAKEN", "TOTAL");
+        printf ("%15s %5s %5s %5s\n", "FUNCTION", "BIAS", "TAKEN", "TOTAL");
     for (map<string,int>::iterator it=functionMapping.begin(); it!=functionMapping.end(); ++it) {
         string funcName = it->first;
         int taken = it->second;
         int total = functionTotal[funcName];
         printf ("%15s %3.2f %5d %5d\n", funcName.c_str(), ((double)taken / total) * 100, taken, total);
     }
-
-    cout<<endl<<"-----------"<<endl<<endl;
 }
 
 void basicBlockInstructionCount(char *instType, int count){
