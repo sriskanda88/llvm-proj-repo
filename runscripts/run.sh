@@ -14,7 +14,7 @@ fi
 # The script must be in $BENCHMARKS folder. There has to exist a folder 
 # named "helper" with the helper.bc file
 
-HELP_PATH="$BENCHMARKS/helper"
+HELP_PATH="$BENCHMARKS/dynamic"
 for bench in compression gcd hadamard welcome; do
     echo ""
     echo "Executing benchmark: $bench"
