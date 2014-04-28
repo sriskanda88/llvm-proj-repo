@@ -33,7 +33,7 @@ void printStatistics () {
 
         cout<<endl<<"STATISTICS:"<<endl<<"-----------"<<endl<<endl;
         // No branches in benchmark
-        if (functionMapping.size() == 0) {
+        if (functionTotal.size() == 0) {
             printf ("%15s %5s %5s %5s\n", "FUNCTION", "BIAS", "TAKEN", "TOTAL");
             printf ("%15s %5s %5d %5d\n", "main", "NaN", 0, 0);
             return;
