@@ -17,74 +17,85 @@
 using namespace llvm;
 using namespace std;
 
+//enum to represent different instruction formats
 enum InstType {X_Op_Y, X_Eq_Y, X_Eq_Addr_Y, X_Eq_Star_Y, Star_X_Eq_Y};
 
 template <class T>
 class DataFlowAnalyzer {
 
     protected:
-        typedef map<string, set<T> > DataFlowFact;
-        std::queue<BasicBlock *, std::list<BasicBlock *> > bbQueue;
-        DFF<T> dataFlowFactsMap;
+        typedef map<string, set<T> > InstructionFact; //Instruction level data fact
+        std::queue<BasicBlock *, std::list<BasicBlock *> > bbQueue; //Worklist queue
+        DFF<T> dataFlowFactsMap; //DataFlowFact map for all instructions
 
-        virtual void initializeLattice();
-        virtual DataFlowFact* flowFunction(Instruction* inst, InstType instType, DataFlowFact* dff_in);
-        virtual DataFlowFact* join (DataFlowFact* a, DataFlowFact* b);
-        virtual DataFlowFact* getBottom();
-        virtual DataFlowFact* getTop();
+        virtual bool flowFunction(Instruction* inst, InstType instType, InstructionFact* dff_in); //generic flow function for all instructions : returns true if fact was changed
+        virtual InstructionFact* join (InstructionFact* inst_a, InstructionFact* inst_b); //join function that internally does what the lattice has defined
+        virtual InstructionFact* setBottom(Instruction* inst); //set the instructionFact for instruction to bottom
+        virtual InstructionFact* setTop(Instruction* inst); //set instructionfact for instruction to top
+        virtual bool isInstructionFactEqual(InstructionFact* inst_a, InstructionFact* _instb);
 
     protected:
 
         DataFlowAnalyzer(){
         }
 
+        //returns instruction type for given instruction
         InstType getInstType(Instruction *inst){
             return X_Op_Y;
         }
 
 
-        void populateBBQueue(Module &M){
-            for (Module::iterator F = M.begin(), FE = M.end(); F != FE; F++){
-                for (Function::iterator BB = F->begin(), E = F->end(); BB != E; BB++){
-                    bbQueue.push(&*BB);
+        //populate the worklist queue with all basic blocks at start and inits them to bottom
+        void populateBBQueue(Function &F){
+            for (Function::iterator BB = F->begin(), E = F->end(); BB != E; BB++){
+                bbQueue.push(&*BB);
+
+                for(BasicBlock::iterator I = BB->begin(), IE = BB->end(); I !+ IE; I++){
+                    Instruction *inst = &*I;
+                    setBottom(inst);
                 }
             }
         }
 
-        void runWorkList(){
+        //The worklist algorithm that runs the flow on the entire procedure
+        void runWorkList(Function &F){
+
+            populateBBQueue(F);
 
             while (!bbQueue.empty()){
                 BasicBlock* BB = bbQueue.pop();
                 BasicBlock* uniqPrev = NULL;
-                DataFlowFact* dff_in = getBottom(); //TODO
-                DataFlowFact* dff_tmp, dff_bb_in, dff_out;
+                InstructionFact* if_in;
+                InstructionFact* if_tmp, if_out;
                 Instruction* inst;
+                bool isBBOutChanged;
 
+                //check if BB has only one predecessor
                 if ((uniqPrev = BB->getUniquePredecessor()) != NULL){
-                    dff_in = getBBDataFlowFactOut(uniqPrev);
+                    if_in = getBBInstructionFactOut(uniqPrev);
                 }
+                //if it has more than one predecessor then join them all
                 else {
                     for (auto it = pred_begin(BB), et = pred_end(BB); it != et; ++it)
                     {
                         BasicBlock* prevBB = *it;
-                        dff_tmp = getBBDataFlowFactOut(prevBB);
-                        dff_in = join (dff_in, prevBB);
+                        if_tmp = getBBInstructionFactOut(prevBB);
+                        if_in = join (if_in, if_tmp);
                     }
                 }
 
-                dff_bb_in = dff_in;
-
+                //run the flow function for each instruction in the basic block
                 for (BasicBlock::iterator I = BB->begin(), IE = BB->end(); I != IE; I++){
                     inst = &*I;
                     string opname = inst->getOpcodeName();
                     InstType instType = getInstType(I);
-                    dff_out = flowFunction(I, instType, dff_in);
+                    isBBOutChanged = flowFunction(I, instType, if_in);
 
-                    dataFlowFactsMap.set(I, dff_out);
-                    dff_in = dff_out;
+                    if_in = if_out;
                 }
 
-                if (!isDataFlowFactEqual(dff_out, dff_bb_in)){
+                //if the OUT of the last instruction in the bb has changed then add all successors to the worklist
+                if (isBBOutChanged){
                     for (auto it = succ_begin(BB), et = succ_end(BB); it != et; ++it)
                     {
                         BasicBlock* succBB = *it;
@@ -94,7 +105,8 @@ class DataFlowAnalyzer {
             }
         }
 
-        DataFlowFact* getBBDataFlowFactOut(BasicBlock *BB){
+        //get the instructionFact for the last instruction in the given basic block
+        InstructionFact* getBBInstructionFactOut(BasicBlock *BB){
             Instruction *I;
             I = &*BB->end();
             return dataFlowFactsMap.getInsFact(I);
