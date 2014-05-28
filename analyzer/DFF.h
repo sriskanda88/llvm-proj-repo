@@ -31,7 +31,17 @@ class DFF {
 	// Checks if an instruction exists in the structure
 	bool exists( string key) {
 	    return dffMap.count(key) != 0;
-	} 
+	}
+
+        // Returns true if the two maps are identical
+        bool compareMaps (INS_FACT* map1, INS_FACT* map2) {
+            if (map1->size() != map2->size()) return false;
+            INS_FACT_IT it1, it2;
+            for (it1=map1->begin(), it2=map2->begin(); it1!=map1->end(); ++it1, ++it2) {
+                if (*it1 != *it2) return false;
+            }
+            return true;
+        } 
 
     public:
 	DFF() {
@@ -90,6 +100,39 @@ class DFF {
 		(*current_fact)[var] = t_set;
 	    }
 	}
+
+        // This function sets facts at the instruction level.
+        // It also compares the previous value with the new one
+        // so we know if anything changed. (True means something 
+        // changed)
+        bool setInsFact (string ins_id, INS_FACT* new_fact) {
+            INS_FACT* prev_fact;
+            if (exists(ins_id)) {
+                cout<<"Exists"<<endl;
+                prev_fact = getInsFact(ins_id);
+                dffMap[ins_id] = new_fact;
+                return (!(compareMaps(prev_fact, new_fact)));
+            }
+            else {
+                cout<<"Does Not Exist"<<endl;
+                dffMap[ins_id] = new_fact;
+                return true;
+            } 
+        }
+
+        // Clones the previous instruction into a placeholder and returns it. 
+        // Does not modify the map structure. We can modify the returned map 
+        //and then set it using the setInsFact function
+        INS_FACT* getTempFact (string prev_id) {
+            INS_FACT* prev_fact = getInsFact(prev_id);
+            INS_FACT* temp_fact = new INS_FACT;
+            for (INS_FACT_IT it=prev_fact->begin(); it!=prev_fact->end(); ++it) {
+                string var = it->first;
+                set<T> t_set = it->second;
+                (*temp_fact)[var] = t_set;
+            }
+            return temp_fact;
+        }
 };
 
 #endif
