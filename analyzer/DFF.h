@@ -14,8 +14,11 @@ class DFF {
 	typedef typename map<string, set<T> >::iterator INS_FACT_IT;
 	typedef typename set<T>::iterator SET_IT;
 
+        enum setType { FULL, EMPTY, REGULAR };
+
 	// The data flow fact map structure
 	DATA_FLOW_FACT dffMap;
+        map <string, setType> typeDescription;
 
 	bool isFirstElement;
 
@@ -55,6 +58,9 @@ class DFF {
 	// Given an instruction (ins_id), a variable name (var_id) and the 
 	// "fact", it adds it in the map structure
 	void setVarFact (string ins_id, string var_id, T value) {
+
+            typeDescription[ins_id] = REGULAR;
+
 	    INS_FACT* temp_fact;
 	    if (exists(ins_id)) {
 		temp_fact = getInsFact(ins_id);
@@ -68,6 +74,14 @@ class DFF {
 
 	// Given an instruction, it prints its facts in the form { X->10, Y->5, ... }
 	void printInsFact (string ins_id) {
+            if (typeDescription[ins_id] == FULL) {
+                cout <<ins_id << ": FULL SET"<<endl;
+                return;
+            }
+            if (typeDescription[ins_id] == EMPTY) {
+                cout <<ins_id << ": EMPTY SET"<<endl;
+                return;
+            }
 	    INS_FACT* fact = getInsFact(ins_id); 
 	    cout <<ins_id << ": { ";
 	    isFirstElement = true;
@@ -81,12 +95,16 @@ class DFF {
 	void removeVarFacts (string ins_id, string var_id) {
 	    if (!exists(ins_id)) return;
 	    INS_FACT* fact = getInsFact(ins_id);
-	    (*fact)[var_id].clear();
+            fact->erase(var_id);
+            if (fact->size() == 0) typeDescription[ins_id] = EMPTY;
 	}
 
 	// Given an instruction (ins_id) and its predecessor instruction (previous_id)
 	// it clones the facts of the previous instruction into the current one
 	void clonePrevIns (string ins_id, string previous_id) {
+            
+            typeDescription[ins_id] = typeDescription[previous_id];
+
 	    INS_FACT* prev_fact = getInsFact(previous_id);
 	    INS_FACT* current_fact;
 	    if (exists(ins_id)) current_fact = getInsFact(ins_id);
@@ -106,15 +124,14 @@ class DFF {
         // so we know if anything changed. (True means something 
         // changed)
         bool setInsFact (string ins_id, INS_FACT* new_fact) {
+            typeDescription[ins_id] = REGULAR;
             INS_FACT* prev_fact;
             if (exists(ins_id)) {
-                cout<<"Exists"<<endl;
                 prev_fact = getInsFact(ins_id);
                 dffMap[ins_id] = new_fact;
                 return (!(compareMaps(prev_fact, new_fact)));
             }
             else {
-                cout<<"Does Not Exist"<<endl;
                 dffMap[ins_id] = new_fact;
                 return true;
             } 
@@ -122,7 +139,7 @@ class DFF {
 
         // Clones the previous instruction into a placeholder and returns it. 
         // Does not modify the map structure. We can modify the returned map 
-        //and then set it using the setInsFact function
+        // and then set it using the setInsFact function
         INS_FACT* getTempFact (string prev_id) {
             INS_FACT* prev_fact = getInsFact(prev_id);
             INS_FACT* temp_fact = new INS_FACT;
@@ -133,6 +150,24 @@ class DFF {
             }
             return temp_fact;
         }
+
+        // Sets a fact to the full set (WARNING: Deletes the set's contents)
+        void setFactFullSet (string ins_id) {
+            if (exists(ins_id)) dffMap[ins_id]->clear();
+            typeDescription[ins_id] = FULL;
+        }
+
+        // Sets a fact to the empty set (WARNING: Deletes the set's contents)
+        void setFactEmptySet (string ins_id) {
+            if (exists(ins_id)) dffMap[ins_id]->clear();
+            typeDescription[ins_id] = EMPTY;
+        }
+
+        // Returns a fact's type. Normally, we shouldn't need to ever call this function.
+        int getFactType (string ins_id) {
+            return typeDescription[ins_id];
+        }
+      
 };
 
 #endif
