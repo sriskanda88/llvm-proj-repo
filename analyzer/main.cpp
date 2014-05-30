@@ -4,6 +4,8 @@ using namespace std;
 
 int main () {
 
+    typedef map<string, set<float> > INS_FACT;
+
     DFF<float> myDff;
     myDff.setVarFact ("Ins1", "X", 1.2);
     myDff.setVarFact ("Ins1", "X", 2.3);
@@ -14,7 +16,32 @@ int main () {
     myDff.setVarFact ("Ins2", "Z", 5.3);
     myDff.setVarFact ("Ins2", "Z", 6.4);
 
+    myDff.removeVarFacts ("Ins2", "Y");
+
     myDff.printInsFact("Ins1");
     myDff.printInsFact("Ins2");
+
+    // This is what I want to perform:
+    // INS_3_OUT = INS_3_IN - { Y -> * } U { W -> 2.3 }
+
+    // Get INS_3_IN ==> INS_2_OUT in a placeholder
+    INS_FACT *insFact = myDff.getTempFact("Ins2");
+    // Perform INS_3_IN - { Y-> * }
+    (*insFact)["Y"].clear();
+    // Perform ( U { W -> 2.3 } )
+    (*insFact)["W"].insert(2.3);
+
+    // Set the modified map back in the structure and check for changes
+    bool modified = myDff.setInsFact ("Ins3", insFact);
+    if (modified) cout << "Map modified" << endl;
+    else cout << "Map NOT modified"<<endl;
+
+    myDff.setFactEmptySet("Ins1");
+    myDff.setFactFullSet("Ins2");
+
+
+    myDff.printInsFact("Ins1");
+    myDff.printInsFact("Ins2");
+    myDff.printInsFact("Ins3");
 
 }
