@@ -18,7 +18,7 @@ using namespace llvm;
 using namespace std;
 
 //enum to represent different instruction formats
-enum InstType {X_Op_Y, X_Eq_Y, X_Eq_Addr_Y, X_Eq_Star_Y, Star_X_Eq_Y};
+enum InstType {X_Eq_C, X_Eq_C_Op_Z, X_Eq_Y_Op_C, X_Eq_C_Op_C, X_Eq_Y_Op_Z, X_Eq_Y, X_Eq_Addr_Y, X_Eq_Star_Y, Star_X_Eq_Y, PHI, UNKNOWN};
 
 template <class T>
 class DataFlowAnalyzer {
@@ -32,7 +32,6 @@ class DataFlowAnalyzer {
         virtual InstructionFact* join (InstructionFact* inst_a, InstructionFact* inst_b); //join function that internally does what the lattice has defined
         virtual InstructionFact* setBottom(Instruction* inst); //set the instructionFact for instruction to bottom
         virtual InstructionFact* setTop(Instruction* inst); //set instructionfact for instruction to top
-        virtual bool isInstructionFactEqual(InstructionFact* inst_a, InstructionFact* _instb);
 
     protected:
 
@@ -41,9 +40,34 @@ class DataFlowAnalyzer {
 
         //returns instruction type for given instruction
         InstType getInstType(Instruction *inst){
-            return X_Op_Y;
-        }
 
+            //PHI instruction - not sure what to do with it !
+            if(PHINode *PN = dyn_cast<PHINode>(I)){
+                return PHI;
+            }
+
+            //Will implement this when we extend to non-binary ops
+            if (!inst.isBinaryOp())
+                return UNKNOWN;
+
+            //check if one or both of the operands are constants
+            User::op_iterator i = inst->op_begin();
+            Constant *op1 = dyn_cast<Constant>(*i++);
+            Constant *op2 = dyn_cast<Constant>(*i);
+
+            if (!op1 && !op2){
+                return X_Eq_Y_Op_Z;
+            }
+            else if (!op2){
+                return X_Eq_Y_Op_C;
+            }
+            else if (!op1){
+                return X_Eq_C_Op_Z;
+            }
+            else{
+                return X_Eq_C_Op_C;
+            }
+        }
 
         //populate the worklist queue with all basic blocks at start and inits them to bottom
         void populateBBQueue(Function &F){
