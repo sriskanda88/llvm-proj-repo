@@ -44,4 +44,24 @@ int main () {
     myDff.printInsFact("Ins2");
     myDff.printInsFact("Ins3");
 
+
+
+    myDff.setVarFact ("Ins4", "X", 1);
+    myDff.setVarFact ("Ins4", "X", 2);
+    myDff.setVarFact ("Ins4", "Y", 4);
+
+    myDff.setVarFact ("Ins5", "X", 3);
+    myDff.setVarFact ("Ins5", "Y", 5);
+    myDff.setVarFact ("Ins5", "Y", 6);
+    myDff.setVarFact ("Ins5", "Z", 1);
+
+    INS_FACT* ins4 = myDff.getInsFact("Ins4");
+    INS_FACT* ins5 = myDff.getInsFact("Ins5");
+    INS_FACT* ins6 = myDff.intersectFacts(ins4, ins5);
+    myDff.setInsFact ("Ins6", ins6);
+
+    myDff.printInsFact("Ins4");
+    myDff.printInsFact("Ins5");
+    myDff.printInsFact("Ins6");
+
 }

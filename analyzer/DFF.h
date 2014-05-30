@@ -154,12 +154,20 @@ class DFF {
         // Sets a fact to the full set (WARNING: Deletes the set's contents)
         void setFactFullSet (string ins_id) {
             if (exists(ins_id)) dffMap[ins_id]->clear();
+            else {
+                INS_FACT* temp_fact = new INS_FACT;
+                dffMap[ins_id] = temp_fact;
+            }
             typeDescription[ins_id] = FULL;
         }
 
         // Sets a fact to the empty set (WARNING: Deletes the set's contents)
         void setFactEmptySet (string ins_id) {
             if (exists(ins_id)) dffMap[ins_id]->clear();
+            else {
+                INS_FACT* temp_fact = new INS_FACT;
+                dffMap[ins_id] = temp_fact;
+            }
             typeDescription[ins_id] = EMPTY;
         }
 
@@ -167,7 +175,76 @@ class DFF {
         int getFactType (string ins_id) {
             return typeDescription[ins_id];
         }
-      
+
+
+        // Gets two instruction identifiers and unions them.
+        // I cannot check if a set is full. The caller needs to check and abort 
+        // if at least one of the instruction facts are the full set.
+        INS_FACT* unionFacts (INS_FACT* map1, INS_FACT* map2) {
+            //get all the keys from both maps into a set (Avoids duplicates)
+            set<string> allKeys;
+            for (INS_FACT_IT it=map1->begin(); it!=map1->end(); ++it) {
+                string var = it->first;
+                allKeys.insert(var);
+            }
+            for (INS_FACT_IT it=map2->begin(); it!=map2->end(); ++it) {
+                string var = it->first;
+                allKeys.insert(var);
+            }
+
+            //Begin merging
+            INS_FACT* result = new INS_FACT;
+            for (typename set<string>::iterator it=allKeys.begin(); it!=allKeys.end(); ++it) { 
+                set<T> set1, set2;
+                set1 = (*map1)[*it];
+                set2 = (*map2)[*it];
+                (*result)[*it].insert(set1.begin(), set1.end());
+                (*result)[*it].insert(set2.begin(), set2.end());
+            }
+
+            return result;
+        }     
+
+        // Gets two instruction identifiers and intersects them.
+        // I cannot check if a set is empty. The caller needs to check and abort
+        // if at least one of the instruction facts are the full set.
+        INS_FACT* intersectFacts (INS_FACT* map1, INS_FACT* map2) {
+            //get all the keys from both maps into a set (Avoids duplicates)
+            set<string> allKeys;
+            for (INS_FACT_IT it=map1->begin(); it!=map1->end(); ++it) {
+                string var = it->first;
+                allKeys.insert(var);
+            }
+            for (INS_FACT_IT it=map2->begin(); it!=map2->end(); ++it) {
+                string var = it->first;
+                allKeys.insert(var);
+            }
+            
+            INS_FACT* result = new INS_FACT;
+            for (typename set<string>::iterator it=allKeys.begin(); it!=allKeys.end(); ++it) {
+                set<T> set1, set2;
+                set1 = (*map1)[*it];
+                set2 = (*map2)[*it];
+                set<T> resultSet;
+
+                //Begin intersection
+                for (typename set<T>::iterator l_it=set1.begin(); l_it!=set1.end(); ++l_it) {
+                    if (set2.count(*l_it) != 0) resultSet.insert(*l_it);
+                }
+                for (typename set<T>::iterator l_it=set2.begin(); l_it!=set2.end(); ++l_it) {
+                    if (set1.count(*l_it) != 0) resultSet.insert(*l_it);
+                }
+                (*result)[*it] = resultSet;
+            }
+            return result;
+        }
+ 
 };
 
 #endif
+
+
+
+
+
+
