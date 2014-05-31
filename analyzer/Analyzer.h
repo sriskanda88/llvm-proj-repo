@@ -4,6 +4,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Support/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CFG.h"
@@ -24,14 +25,14 @@ template <class T>
 class DataFlowAnalyzer {
 
     protected:
-        typedef map<string, set<T> > InstructionFact; //Instruction level data fact
+        typedef map<string, set<T> > InstFact; //Instruction level data fact
         std::queue<BasicBlock *, std::list<BasicBlock *> > bbQueue; //Worklist queue
         DFF<T> dataFlowFactsMap; //DataFlowFact map for all instructions
 
-        virtual bool flowFunction(Instruction* inst, InstType instType, InstructionFact* dff_in); //generic flow function for all instructions : returns true if fact was changed
-        virtual InstructionFact* join (InstructionFact* inst_a, InstructionFact* inst_b); //join function that internally does what the lattice has defined
-        virtual InstructionFact* setBottom(Instruction* inst); //set the instructionFact for instruction to bottom
-        virtual InstructionFact* setTop(Instruction* inst); //set instructionfact for instruction to top
+        virtual bool flowFunction(Instruction* inst, InstType instType, InstFact* dff_in); //generic flow function for all instructions : returns true if fact was changed
+        virtual InstFact* join (InstFact* inst_a, InstFact* inst_b); //join function that internally does what the lattice has defined
+        virtual void setBottom(Instruction* inst); //set the instructionFact for instruction to bottom
+        virtual void setTop(Instruction* inst); //set instructionfact for instruction to top
 
     protected:
 
@@ -42,12 +43,12 @@ class DataFlowAnalyzer {
         InstType getInstType(Instruction *inst){
 
             //PHI instruction - not sure what to do with it !
-            if(PHINode *PN = dyn_cast<PHINode>(I)){
+            if(dyn_cast<PHINode>(inst)){
                 return PHI;
             }
 
             //Will implement this when we extend to non-binary ops
-            if (!inst.isBinaryOp())
+            if (!inst->isBinaryOp())
                 return UNKNOWN;
 
             //check if one or both of the operands are constants
@@ -71,10 +72,10 @@ class DataFlowAnalyzer {
 
         //populate the worklist queue with all basic blocks at start and inits them to bottom
         void populateBBQueue(Function &F){
-            for (Function::iterator BB = F->begin(), E = F->end(); BB != E; BB++){
+            for (Function::iterator BB = F.begin(), E = F.end(); BB != E; BB++){
                 bbQueue.push(&*BB);
 
-                for(BasicBlock::iterator I = BB->begin(), IE = BB->end(); I !+ IE; I++){
+                for(BasicBlock::iterator I = BB->begin(), IE = BB->end(); I != IE; I++){
                     Instruction *inst = &*I;
                     setBottom(inst);
                 }
@@ -87,23 +88,24 @@ class DataFlowAnalyzer {
             populateBBQueue(F);
 
             while (!bbQueue.empty()){
-                BasicBlock* BB = bbQueue.pop();
+                BasicBlock* BB = bbQueue.front();
+                bbQueue.pop();
                 BasicBlock* uniqPrev = NULL;
-                InstructionFact* if_in;
-                InstructionFact* if_tmp, if_out;
+                InstFact* if_in;
+                InstFact* if_tmp;
                 Instruction* inst;
                 bool isBBOutChanged;
 
                 //check if BB has only one predecessor
                 if ((uniqPrev = BB->getUniquePredecessor()) != NULL){
-                    if_in = getBBInstructionFactOut(uniqPrev);
+                    if_in = getBBInstFactOut(uniqPrev);
                 }
                 //if it has more than one predecessor then join them all
                 else {
-                    for (auto it = pred_begin(BB), et = pred_end(BB); it != et; ++it)
+                    for (pred_iterator it = pred_begin(BB), et = pred_end(BB); it != et; ++it)
                     {
                         BasicBlock* prevBB = *it;
-                        if_tmp = getBBInstructionFactOut(prevBB);
+                        if_tmp = getBBInstFactOut(prevBB);
                         if_in = join (if_in, if_tmp);
                     }
                 }
@@ -115,12 +117,13 @@ class DataFlowAnalyzer {
                     InstType instType = getInstType(I);
                     isBBOutChanged = flowFunction(I, instType, if_in);
 
-                    if_in = if_out;
+                    if_in = dataFlowFactsMap.getInsFact("tmp");
+                    //if_in = dataFlowFactsMap.getInsFact(I);
                 }
 
                 //if the OUT of the last instruction in the bb has changed then add all successors to the worklist
                 if (isBBOutChanged){
-                    for (auto it = succ_begin(BB), et = succ_end(BB); it != et; ++it)
+                    for (succ_iterator it = succ_begin(BB), et = succ_end(BB); it != et; ++it)
                     {
                         BasicBlock* succBB = *it;
                         bbQueue.push(succBB);
@@ -130,10 +133,12 @@ class DataFlowAnalyzer {
         }
 
         //get the instructionFact for the last instruction in the given basic block
-        InstructionFact* getBBInstructionFactOut(BasicBlock *BB){
-            Instruction *I;
-            I = &*BB->end();
-            return dataFlowFactsMap.getInsFact(I);
+        InstFact* getBBInstFactOut(BasicBlock *BB){
+            //Instruction *I;
+            //I = &*BB->end();
+
+            return dataFlowFactsMap.getInsFact("tmp");
+            //return dataFlowFactsMap.getInsFact(I);
         }
 };
 
