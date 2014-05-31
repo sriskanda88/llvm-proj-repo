@@ -4,6 +4,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Support/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CFG.h"
@@ -42,12 +43,12 @@ class DataFlowAnalyzer {
         InstType getInstType(Instruction *inst){
 
             //PHI instruction - not sure what to do with it !
-            if(PHINode *PN = dyn_cast<PHINode>(I)){
+            if(dyn_cast<PHINode>(inst)){
                 return PHI;
             }
 
             //Will implement this when we extend to non-binary ops
-            if (!inst.isBinaryOp())
+            if (!inst->isBinaryOp())
                 return UNKNOWN;
 
             //check if one or both of the operands are constants
@@ -71,10 +72,10 @@ class DataFlowAnalyzer {
 
         //populate the worklist queue with all basic blocks at start and inits them to bottom
         void populateBBQueue(Function &F){
-            for (Function::iterator BB = F->begin(), E = F->end(); BB != E; BB++){
+            for (Function::iterator BB = F.begin(), E = F.end(); BB != E; BB++){
                 bbQueue.push(&*BB);
 
-                for(BasicBlock::iterator I = BB->begin(), IE = BB->end(); I !+ IE; I++){
+                for(BasicBlock::iterator I = BB->begin(), IE = BB->end(); I != IE; I++){
                     Instruction *inst = &*I;
                     setBottom(inst);
                 }
