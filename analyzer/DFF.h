@@ -4,13 +4,15 @@
 #include <map>
 #include <set>
 #include <iostream>
+#include "llvm/IR/Instruction.h"
 using namespace std;
+using namespace llvm;
 
 template <class T>
 class DFF {
     private:
 	typedef map<string, set<T> > INS_FACT;
-	typedef map <string, INS_FACT* > DATA_FLOW_FACT;
+	typedef map <Instruction*, INS_FACT* > DATA_FLOW_FACT;
 	typedef typename map<string, set<T> >::iterator INS_FACT_IT;
 	typedef typename set<T>::iterator SET_IT;
 
@@ -18,7 +20,7 @@ class DFF {
 
 	// The data flow fact map structure
 	DATA_FLOW_FACT dffMap;
-        map <string, setType> typeDescription;
+        map <Instruction*, setType> typeDescription;
 
 	bool isFirstElement;
 
@@ -32,7 +34,7 @@ class DFF {
 	}
 
 	// Checks if an instruction exists in the structure
-	bool exists( string key) {
+	bool exists( Instruction* key) {
 	    return dffMap.count(key) != 0;
 	}
 
@@ -51,13 +53,13 @@ class DFF {
 	    isFirstElement = true;
 	};
 
-	INS_FACT* getInsFact(string ins_id) {
+	INS_FACT* getInsFact(Instruction* ins_id) {
 	    return dffMap[ins_id];
 	}
 
 	// Given an instruction (ins_id), a variable name (var_id) and the 
 	// "fact", it adds it in the map structure
-	void setVarFact (string ins_id, string var_id, T value) {
+	void setVarFact (Instruction* ins_id, string var_id, T value) {
 
             typeDescription[ins_id] = REGULAR;
 
@@ -73,7 +75,7 @@ class DFF {
 	}
 
 	// Given an instruction, it prints its facts in the form { X->10, Y->5, ... }
-	void printInsFact (string ins_id) {
+	void printInsFact (Instruction* ins_id) {
             if (typeDescription[ins_id] == FULL) {
                 cout <<ins_id << ": FULL SET"<<endl;
                 return;
@@ -92,7 +94,7 @@ class DFF {
 	}
 
 	// Given an instruction and a variable, it performs in - { VAR -> * }
-	void removeVarFacts (string ins_id, string var_id) {
+	void removeVarFacts (Instruction* ins_id, string var_id) {
 	    if (!exists(ins_id)) return;
 	    INS_FACT* fact = getInsFact(ins_id);
             fact->erase(var_id);
@@ -101,7 +103,7 @@ class DFF {
 
 	// Given an instruction (ins_id) and its predecessor instruction (previous_id)
 	// it clones the facts of the previous instruction into the current one
-	void clonePrevIns (string ins_id, string previous_id) {
+	void clonePrevIns (Instruction* ins_id, Instruction* previous_id) {
             
             typeDescription[ins_id] = typeDescription[previous_id];
 
@@ -123,7 +125,7 @@ class DFF {
         // It also compares the previous value with the new one
         // so we know if anything changed. (True means something 
         // changed)
-        bool setInsFact (string ins_id, INS_FACT* new_fact) {
+        bool setInsFact (Instruction* ins_id, INS_FACT* new_fact) {
             typeDescription[ins_id] = REGULAR;
             INS_FACT* prev_fact;
             if (exists(ins_id)) {
@@ -140,7 +142,7 @@ class DFF {
         // Clones the previous instruction into a placeholder and returns it. 
         // Does not modify the map structure. We can modify the returned map 
         // and then set it using the setInsFact function
-        INS_FACT* getTempFact (string prev_id) {
+        INS_FACT* getTempFact (Instruction* prev_id) {
             INS_FACT* prev_fact = getInsFact(prev_id);
             INS_FACT* temp_fact = new INS_FACT;
             for (INS_FACT_IT it=prev_fact->begin(); it!=prev_fact->end(); ++it) {
@@ -152,7 +154,7 @@ class DFF {
         }
 
         // Sets a fact to the full set (WARNING: Deletes the set's contents)
-        void setFactFullSet (string ins_id) {
+        void setFactFullSet (Instruction* ins_id) {
             if (exists(ins_id)) dffMap[ins_id]->clear();
             else {
                 INS_FACT* temp_fact = new INS_FACT;
@@ -162,7 +164,7 @@ class DFF {
         }
 
         // Sets a fact to the empty set (WARNING: Deletes the set's contents)
-        void setFactEmptySet (string ins_id) {
+        void setFactEmptySet (Instruction* ins_id) {
             if (exists(ins_id)) dffMap[ins_id]->clear();
             else {
                 INS_FACT* temp_fact = new INS_FACT;
@@ -172,7 +174,7 @@ class DFF {
         }
 
         // Returns a fact's type. Normally, we shouldn't need to ever call this function.
-        int getFactType (string ins_id) {
+        int getFactType (Instruction* ins_id) {
             return typeDescription[ins_id];
         }
 
