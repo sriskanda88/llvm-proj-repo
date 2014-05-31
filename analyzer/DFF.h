@@ -9,9 +9,9 @@ using namespace std;
 template <class T>
 class DFF {
     private:
-	typedef map<string, set<T> > INS_FACT;
-	typedef map <string, INS_FACT* > DATA_FLOW_FACT;
-	typedef typename map<string, set<T> >::iterator INS_FACT_IT;
+	typedef map<string, set<T> > InstFact;
+	typedef map <string, InstFact* > DATA_FLOW_FACT;
+	typedef typename map<string, set<T> >::iterator InstFact_IT;
 	typedef typename set<T>::iterator SET_IT;
 
         enum setType { FULL, EMPTY, REGULAR };
@@ -37,9 +37,9 @@ class DFF {
 	}
 
         // Returns true if the two maps are identical
-        bool compareMaps (INS_FACT* map1, INS_FACT* map2) {
+        bool compareMaps (InstFact* map1, InstFact* map2) {
             if (map1->size() != map2->size()) return false;
-            INS_FACT_IT it1, it2;
+            InstFact_IT it1, it2;
             for (it1=map1->begin(), it2=map2->begin(); it1!=map1->end(); ++it1, ++it2) {
                 if (*it1 != *it2) return false;
             }
@@ -51,7 +51,7 @@ class DFF {
 	    isFirstElement = true;
 	};
 
-	INS_FACT* getInsFact(string ins_id) {
+	InstFact* getInsFact(string ins_id) {
 	    return dffMap[ins_id];
 	}
 
@@ -61,12 +61,12 @@ class DFF {
 
             typeDescription[ins_id] = REGULAR;
 
-	    INS_FACT* temp_fact;
+	    InstFact* temp_fact;
 	    if (exists(ins_id)) {
 		temp_fact = getInsFact(ins_id);
 	    }
 	    else {
-		temp_fact = new INS_FACT;
+		temp_fact = new InstFact;
 		dffMap[ins_id] = temp_fact;
 	    }
 	    (*temp_fact)[var_id].insert(value);
@@ -82,10 +82,10 @@ class DFF {
                 cout <<ins_id << ": EMPTY SET"<<endl;
                 return;
             }
-	    INS_FACT* fact = getInsFact(ins_id); 
+	    InstFact* fact = getInsFact(ins_id); 
 	    cout <<ins_id << ": { ";
 	    isFirstElement = true;
-	    for (INS_FACT_IT it=fact->begin(); it!=fact->end(); ++it) {
+	    for (InstFact_IT it=fact->begin(); it!=fact->end(); ++it) {
 		printSet (it->first, it->second);
 	    }
 	    cout <<" }"<<endl;
@@ -94,7 +94,7 @@ class DFF {
 	// Given an instruction and a variable, it performs in - { VAR -> * }
 	void removeVarFacts (string ins_id, string var_id) {
 	    if (!exists(ins_id)) return;
-	    INS_FACT* fact = getInsFact(ins_id);
+	    InstFact* fact = getInsFact(ins_id);
             fact->erase(var_id);
             if (fact->size() == 0) typeDescription[ins_id] = EMPTY;
 	}
@@ -105,14 +105,14 @@ class DFF {
             
             typeDescription[ins_id] = typeDescription[previous_id];
 
-	    INS_FACT* prev_fact = getInsFact(previous_id);
-	    INS_FACT* current_fact;
+	    InstFact* prev_fact = getInsFact(previous_id);
+	    InstFact* current_fact;
 	    if (exists(ins_id)) current_fact = getInsFact(ins_id);
 	    else {
-		current_fact = new INS_FACT;
+		current_fact = new InstFact;
 		dffMap[ins_id] = current_fact;
 	    }
-	    for (INS_FACT_IT it=prev_fact->begin(); it!=prev_fact->end(); ++it) {
+	    for (InstFact_IT it=prev_fact->begin(); it!=prev_fact->end(); ++it) {
 		string var = it->first;
 		set<T> t_set = it->second;
 		(*current_fact)[var] = t_set;
@@ -123,9 +123,9 @@ class DFF {
         // It also compares the previous value with the new one
         // so we know if anything changed. (True means something 
         // changed)
-        bool setInsFact (string ins_id, INS_FACT* new_fact) {
+        bool setInsFact (string ins_id, InstFact* new_fact) {
             typeDescription[ins_id] = REGULAR;
-            INS_FACT* prev_fact;
+            InstFact* prev_fact;
             if (exists(ins_id)) {
                 prev_fact = getInsFact(ins_id);
                 dffMap[ins_id] = new_fact;
@@ -140,10 +140,10 @@ class DFF {
         // Clones the previous instruction into a placeholder and returns it. 
         // Does not modify the map structure. We can modify the returned map 
         // and then set it using the setInsFact function
-        INS_FACT* getTempFact (string prev_id) {
-            INS_FACT* prev_fact = getInsFact(prev_id);
-            INS_FACT* temp_fact = new INS_FACT;
-            for (INS_FACT_IT it=prev_fact->begin(); it!=prev_fact->end(); ++it) {
+        InstFact* getTempFact (string prev_id) {
+            InstFact* prev_fact = getInsFact(prev_id);
+            InstFact* temp_fact = new InstFact;
+            for (InstFact_IT it=prev_fact->begin(); it!=prev_fact->end(); ++it) {
                 string var = it->first;
                 set<T> t_set = it->second;
                 (*temp_fact)[var] = t_set;
@@ -155,7 +155,7 @@ class DFF {
         void setFactFullSet (string ins_id) {
             if (exists(ins_id)) dffMap[ins_id]->clear();
             else {
-                INS_FACT* temp_fact = new INS_FACT;
+                InstFact* temp_fact = new InstFact;
                 dffMap[ins_id] = temp_fact;
             }
             typeDescription[ins_id] = FULL;
@@ -165,7 +165,7 @@ class DFF {
         void setFactEmptySet (string ins_id) {
             if (exists(ins_id)) dffMap[ins_id]->clear();
             else {
-                INS_FACT* temp_fact = new INS_FACT;
+                InstFact* temp_fact = new InstFact;
                 dffMap[ins_id] = temp_fact;
             }
             typeDescription[ins_id] = EMPTY;
@@ -180,20 +180,20 @@ class DFF {
         // Gets two instruction identifiers and unions them.
         // I cannot check if a set is full. The caller needs to check and abort 
         // if at least one of the instruction facts are the full set.
-        INS_FACT* unionFacts (INS_FACT* map1, INS_FACT* map2) {
+        InstFact* unionFacts (InstFact* map1, InstFact* map2) {
             //get all the keys from both maps into a set (Avoids duplicates)
             set<string> allKeys;
-            for (INS_FACT_IT it=map1->begin(); it!=map1->end(); ++it) {
+            for (InstFact_IT it=map1->begin(); it!=map1->end(); ++it) {
                 string var = it->first;
                 allKeys.insert(var);
             }
-            for (INS_FACT_IT it=map2->begin(); it!=map2->end(); ++it) {
+            for (InstFact_IT it=map2->begin(); it!=map2->end(); ++it) {
                 string var = it->first;
                 allKeys.insert(var);
             }
 
             //Begin merging
-            INS_FACT* result = new INS_FACT;
+            InstFact* result = new InstFact;
             for (typename set<string>::iterator it=allKeys.begin(); it!=allKeys.end(); ++it) { 
                 set<T> set1, set2;
                 set1 = (*map1)[*it];
@@ -208,19 +208,19 @@ class DFF {
         // Gets two instruction identifiers and intersects them.
         // I cannot check if a set is empty. The caller needs to check and abort
         // if at least one of the instruction facts are the full set.
-        INS_FACT* intersectFacts (INS_FACT* map1, INS_FACT* map2) {
+        InstFact* intersectFacts (InstFact* map1, InstFact* map2) {
             //get all the keys from both maps into a set (Avoids duplicates)
             set<string> allKeys;
-            for (INS_FACT_IT it=map1->begin(); it!=map1->end(); ++it) {
+            for (InstFact_IT it=map1->begin(); it!=map1->end(); ++it) {
                 string var = it->first;
                 allKeys.insert(var);
             }
-            for (INS_FACT_IT it=map2->begin(); it!=map2->end(); ++it) {
+            for (InstFact_IT it=map2->begin(); it!=map2->end(); ++it) {
                 string var = it->first;
                 allKeys.insert(var);
             }
             
-            INS_FACT* result = new INS_FACT;
+            InstFact* result = new InstFact;
             for (typename set<string>::iterator it=allKeys.begin(); it!=allKeys.end(); ++it) {
                 set<T> set1, set2;
                 set1 = (*map1)[*it];
