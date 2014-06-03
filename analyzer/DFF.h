@@ -29,7 +29,7 @@ class DFF {
 	    for (SET_IT it=temp_set.begin(); it!=temp_set.end(); ++it) {
 		if (!isFirstElement) cout <<", ";
 		else isFirstElement = false;
-		cout << var_id << "->" << *it;
+		cout << var_id<< "->" << *it;
 	    }
 	}
 
@@ -85,13 +85,29 @@ class DFF {
                 return;
             }
 	    InstFact* fact = getInsFact(ins_id); 
-	    cout <<ins_id << ": { ";
+            ins_id->dump();
+	    cout <<"    "<<ins_id << ": { ";
 	    isFirstElement = true;
 	    for (InstFact_IT it=fact->begin(); it!=fact->end(); ++it) {
 		printSet (it->first, it->second);
 	    }
 	    cout <<" }"<<endl;
 	}
+    
+        void printInsFact (InstFact* fact) {
+            cout <<": { ";
+            isFirstElement = true;
+            for (InstFact_IT it=fact->begin(); it!=fact->end(); ++it) {
+                printSet (it->first, it->second);
+            }
+            cout <<" }"<<endl;
+        }
+
+        void printEverything () {
+            for (typename map<Instruction*, InstFact*>::iterator it = dffMap.begin(); it!=dffMap.end(); ++it) {
+                printInsFact(it->first);
+            }
+        }
 
 	// Given an instruction and a variable, it performs in - { VAR -> * }
 	void removeVarFacts (Instruction* ins_id, string var_id) {
