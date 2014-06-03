@@ -54,7 +54,8 @@ class DFF {
 	};
 
 	InstFact* getInsFact(Instruction* ins_id) {
-	    return dffMap[ins_id];
+            if (!exists(ins_id)) dffMap[ins_id] = new InstFact;
+            return dffMap[ins_id];
 	}
 
 	// Given an instruction (ins_id), a variable name (var_id) and the 

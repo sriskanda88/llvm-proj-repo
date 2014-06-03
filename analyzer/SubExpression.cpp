@@ -26,7 +26,8 @@ namespace {
         //enum to represent different instruction formats
         enum InstType {X_Eq_C, X_Eq_C_Op_Z, X_Eq_Y_Op_C, X_Eq_C_Op_C, X_Eq_Y_Op_Z, X_Eq_Y, X_Eq_Addr_Y, X_Eq_Star_Y, Star_X_Eq_Y, PHI, UNKNOWN};
 
-        std::queue<BasicBlock *, std::list<BasicBlock *> > bbQueue; //Worklist queue
+        //std::queue<BasicBlock *, std::list<BasicBlock *> > bbQueue; //Worklist queue
+        set<BasicBlock*> bbQueue;
         DFF<string> dataFlowFactsMap; //DataFlowFact map for all instructions
 
 
@@ -62,6 +63,8 @@ namespace {
                                    InstType instType, 
                                    InstFact* dff_in) {
             inst->dump();
+            errs()<<"Before the instruction: ";
+            dataFlowFactsMap.printInsFact(dff_in); 
             
             switch (instType) {
                 case PHI:
@@ -164,8 +167,8 @@ namespace {
         //populate the worklist queue with all basic blocks at start and inits them to bottom
         void populateBBQueue(Function &F){
             for (Function::iterator BB = F.begin(), E = F.end(); BB != E; BB++){
-                bbQueue.push(&*BB);
-
+                //bbQueue.push(&*BB);
+                bbQueue.insert(BB);
                 for(BasicBlock::iterator I = BB->begin(), IE = BB->end(); I != IE; I++){
                     Instruction *inst = &*I;
                     setBottom(inst);
@@ -179,23 +182,32 @@ namespace {
             populateBBQueue(F);
 
             while (!bbQueue.empty()){
-                BasicBlock* BB = bbQueue.front();
-                bbQueue.pop();
+                //BasicBlock* BB = bbQueue.front();
+                //bbQueue.pop();
+                set<BasicBlock*>::iterator BB_it = bbQueue.begin();
+                BasicBlock* BB = *BB_it;
+                bbQueue.erase(BB_it);
+                
                 BasicBlock* uniqPrev = NULL;
-                InstFact* if_in = new InstFact;;
-                InstFact* if_tmp;
+                InstFact* if_in = new InstFact;
+                InstFact* if_tmp = new InstFact;
                 Instruction* inst;
                 bool isBBOutChanged;
 
+                errs() << "Working on "<<(string)BB->getName()<<"\n";
+
                 //check if BB has only one predecessor
                 if ((uniqPrev = BB->getUniquePredecessor()) != NULL){
+                    errs()<<"UNIQUE "<<(string)uniqPrev->getName()<<"\n";
                     if_in = getBBInstFactOut(uniqPrev);
                 }
                 //if it has more than one predecessor then join them all
                 else {
+                    errs()<<"MULTIPLE\n";
                     for (pred_iterator it = pred_begin(BB), et = pred_end(BB); it != et; ++it)
                     {
                         BasicBlock* prevBB = *it;
+                        errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
                         if_tmp = getBBInstFactOut(prevBB);
                         if_in = join (if_in, if_tmp);
                     }
@@ -203,6 +215,7 @@ namespace {
 
                 //run the flow function for each instruction in the basic block
                 for (BasicBlock::iterator I = BB->begin(), IE = BB->end(); I != IE; I++){
+                    errs()<<"ITERATION\n";
 
                     inst = &*I;
                     string opname = inst->getOpcodeName();
@@ -215,10 +228,14 @@ namespace {
 
                 //if the OUT of the last instruction in the bb has changed then add all successors to the worklist
                 if (isBBOutChanged){
+                    errs()<<"Things changed. Scheduling successors\n";
                     for (succ_iterator it = succ_begin(BB), et = succ_end(BB); it != et; ++it)
                     {
                         BasicBlock* succBB = *it;
-                        bbQueue.push(succBB);
+                        errs()<<"Successor: "<<succBB->getName()<<"\n";
+                        //bbQueue.push(succBB);
+                        pair<set<BasicBlock*>::iterator,bool> t_p = bbQueue.insert(succBB);
+                        if (!t_p.second) errs() <<"Already exists\n";
                     }
                 }
             }
@@ -227,10 +244,13 @@ namespace {
         //get the instructionFact for the last instruction in the given basic block
         InstFact* getBBInstFactOut(BasicBlock *BB){
             Instruction *I;
-            I = BB->end();
+            I = BB->getTerminator();
+
+            errs()<<"Terminator: "<<*I<<"\n";
 
             //return dataFlowFactsMap.getInsFact(NULL);
-            return dataFlowFactsMap.getInsFact(I);
+            //return dataFlowFactsMap.getInsFact(I);
+            return dataFlowFactsMap.getTempFact(I);
         }
 
 
