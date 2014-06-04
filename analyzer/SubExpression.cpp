@@ -7,6 +7,7 @@
 #include "llvm/Support/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CFG.h"
+#include "llvm/IR/Constants.h"
 #include "DFF.h"
 #include <string>
 #include <map>
@@ -88,14 +89,30 @@ namespace {
                 }
                 case X_Eq_Y:
                 {
+                    //It's safe to cast to StoreInst
+                    StoreInst* si = dyn_cast<StoreInst>(inst);
                     // Get Y
+                    Value* Y_var = si->getOperand(0);
+                    string Y_var_name = (string) Y_var->getName();
                     // Look in map for Y
+                    set<string> tempSet = (*dff_in)[Y_var_name];
                     // If it has result then insert X 
                     // in the map with same result
+                    Value* X_var = si->getOperand(1);
+                    string X_var_name = (string) X_var->getName();
+                    (*dff_in)[X_var_name].insert(tempSet.begin(), tempSet.end());
+
                     return dataFlowFactsMap.setInsFact(inst, dff_in);
                     break;
                 }
                 case X_Eq_C:
+                // {
+                    //For CSE we just ignore this
+                    // Value *firstOperand = instnst->getOperand(0);
+                    // Value *secondOperand = instnst->getOperand(1);
+                    // string variable = (string) secondOperand->getName();
+                    // (*dff_in)[variable].insert(something);
+                // }
                 case X_Eq_Addr_Y: //mem2reg pass saves us from this
                 case X_Eq_Star_Y: //mem2reg pass saves us from this
                 case Star_X_Eq_Y: //mem2reg pass saves us from this
@@ -160,12 +177,53 @@ namespace {
 
             //PHI instruction - not sure what to do with it !
             if(dyn_cast<PHINode>(inst)){
+                errs()<<"PHI\n";
                 return PHI;
             }
 
+            if (StoreInst *storeInst = dyn_cast<StoreInst>(inst)) {
+                if (storeInst->getNumOperands() == 2) {
+                    Value *firstOperand = storeInst->getOperand(0);
+                    Value *secondOperand = storeInst->getOperand(1);
+                    Type* t1 = firstOperand->getType();
+                    if (dyn_cast<Constant>(firstOperand)) {
+                        errs()<<"X_Eq_C\n";
+                        return X_Eq_C;
+                    }
+                    
+                    //Could be X_Eq_Y or X_Eq_Star_Y or Star_X_Eq_Y or X_Eq_Addr_Y
+                    if (t1->isPointerTy()) {
+                        errs()<<"X_Eq_Addr_Y\n";
+                        return X_Eq_Addr_Y;
+                    }
+                    
+                    //Could be X_Eq_Y or X_Eq_Star_Y or Star_X_Eq_Y
+                    if (dyn_cast<BinaryOperator>(firstOperand)) {
+                        errs()<<"X_Eq_Y\n";
+                        return X_Eq_Y;
+                    }
+
+                    //Could be X_Eq_Star_Y or Star_X_Eq_Y
+                    if (LoadInst* inst_t = dyn_cast<LoadInst>(firstOperand)) {
+                        if (!(inst_t->getType())->isPointerTy()) {
+                            if (!dyn_cast<LoadInst>(secondOperand)) {
+                                errs()<<"X_Eq_Star_Y\n";
+                                return X_Eq_Star_Y;
+                            }
+                            else {
+                                errs()<<"Star_X_Eq_Y\n";
+                                return Star_X_Eq_Y;
+                            }
+                        }
+                    }
+                }
+            }
+
             //Will implement this when we extend to non-binary ops
-            if (!inst->isBinaryOp())
+            if (!inst->isBinaryOp()) {
+                errs()<<"UNKNOWN\n";
                 return UNKNOWN;
+            }
 
             //check if one or both of the operands are constants
             User::op_iterator i = inst->op_begin();
@@ -173,15 +231,19 @@ namespace {
             Constant *op2 = dyn_cast<Constant>(*i);
 
             if (!op1 && !op2){
+                errs()<<"X_Eq_Y_Op_Z\n";
                 return X_Eq_Y_Op_Z;
             }
             else if (!op2){
+                errs()<<"X_Eq_Y_Op_C\n";
                 return X_Eq_Y_Op_C;
             }
             else if (!op1){
+                errs()<<"X_Eq_C_Op_Z\n";
                 return X_Eq_C_Op_Z;
             }
             else{
+                errs()<<"X_Eq_C_Op_C\n";
                 return X_Eq_C_Op_C;
             }
         }
@@ -215,7 +277,7 @@ namespace {
                 Instruction* inst;
                 bool isBBOutChanged;
 
-                //errs() << "Working on "<<(string)BB->getName()<<"\n";
+                errs() << "Working on "<<(string)BB->getName()<<"\n";
 
                 //check if BB has only one predecessor
                 if ((uniqPrev = BB->getUniquePredecessor()) != NULL){
@@ -230,17 +292,19 @@ namespace {
                     {
                         BasicBlock* prevBB = *it;
                         //errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
-                        predecessors.insert(prevBB->getTerminator());
+                        Instruction* in_temp = prevBB->getTerminator();
+                        if (dataFlowFactsMap.isFullSet(in_temp)) continue;
+                        predecessors.insert(in_temp);
                     }
                     if_in = joinAllPredecessors(predecessors);
                 }
 
                 //run the flow function for each instruction in the basic block
                 for (BasicBlock::iterator I = BB->begin(), IE = BB->end(); I != IE; I++){
-                    //errs()<<"ITERATION\n";
 
                     inst = &*I;
                     string opname = inst->getOpcodeName();
+                    inst->dump();
                     InstType instType = getInstType(I);
                     isBBOutChanged = flowFunction(I, instType, if_in);
 

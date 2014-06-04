@@ -257,6 +257,14 @@ class DFF {
             }
             return result;
         }
+
+        bool isFullSet(Instruction* inst) {
+            return (typeDescription[inst] == FULL);
+        }
+
+        bool isEmptySet(Instruction* inst) {
+            return (typeDescription[inst] == EMPTY);
+        }
  
 };
 
