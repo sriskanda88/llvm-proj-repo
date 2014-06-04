@@ -62,20 +62,20 @@ namespace {
         virtual bool flowFunction (Instruction* inst, 
                                    InstType instType, 
                                    InstFact* dff_in) {
-            inst->dump();
-            errs()<<"Before the instruction: ";
-            dataFlowFactsMap.printInsFact(dff_in); 
+            //inst->dump();
+            //errs()<<"Before the instruction: ";
+            //dataFlowFactsMap.printInsFact(dff_in); 
             
             switch (instType) {
                 case PHI:
                 {
-                    errs() << "PHI Node\n";
+                    //errs() << "PHI Node\n";
                     return dataFlowFactsMap.setInsFact(inst, dff_in);
                     break;
                 }
                 case X_Eq_Y_Op_Z:
                 {
-                    errs() << "X = Y op Z\n";
+                    //errs() << "X = Y op Z\n";
                     //create a string of the form Y op Z
                     string entry = createYopZString(inst);
                     string variable = (string)inst->getName();
@@ -85,19 +85,19 @@ namespace {
                 }
                 case X_Eq_Y_Op_C:
                 {
-                    errs() << "X = Y op C\n";
+                    //errs() << "X = Y op C\n";
                     return dataFlowFactsMap.setInsFact(inst, dff_in);
                     break;
                 }
                 case X_Eq_C_Op_Z:
                 {
-                    errs() << "X = C op Z\n";
+                    //errs() << "X = C op Z\n";
                     return dataFlowFactsMap.setInsFact(inst, dff_in);
                     break;
                 }
                 case X_Eq_C_Op_C:
                 {
-                    errs() << "X = C op C\n";
+                    //errs() << "X = C op C\n";
                     string entry = createYopZString(inst);
                     string variable = (string)inst->getName();
                     (*dff_in)[variable].insert(entry);
@@ -106,7 +106,7 @@ namespace {
                 }
                 case UNKNOWN:
                 {
-                    errs() << "ERROR: Unknown Type\n";
+                    //errs() << "ERROR: Unknown Type\n";
                     return dataFlowFactsMap.setInsFact(inst, dff_in);
                     break;
                 }
@@ -117,7 +117,7 @@ namespace {
         }
 
         virtual InstFact* join (InstFact* inst_a, InstFact* inst_b) {
-            errs() <<"Join\n";
+            //errs() <<"Join\n";
             return dataFlowFactsMap.intersectFacts(inst_a, inst_b);
         }
 
@@ -132,6 +132,29 @@ namespace {
             dataFlowFactsMap.setFactEmptySet(inst);
         }
         
+        InstFact* joinAllPredecessors(set<Instruction*> predecessors) {
+            InstFact* result = new InstFact;
+            //Check if any one is the empty set and return empty set
+            bool first = true;
+            //errs()<<"Set has size: "<<predecessors.size()<<"\n";
+            for (set<Instruction*>::iterator it=predecessors.begin(); it!=predecessors.end(); ++it) {
+                if (first) {
+                    //errs()<<"Cloning first element: "<<*it<<"\n";
+                    result = dataFlowFactsMap.getTempFact(*it);
+                    first = false;
+                }
+                else {
+                    //errs() <<"Joining instruction "<<*it<<"\n";
+                    InstFact* if_tmp = dataFlowFactsMap.getTempFact(*it);
+                    result = join(result,if_tmp); 
+                }
+            }
+            return result;
+
+            //copy the first element
+            //loop through the rest elements
+        }
+
 
         //returns instruction type for given instruction
         InstType getInstType(Instruction *inst){
@@ -194,28 +217,31 @@ namespace {
                 Instruction* inst;
                 bool isBBOutChanged;
 
-                errs() << "Working on "<<(string)BB->getName()<<"\n";
+                //errs() << "Working on "<<(string)BB->getName()<<"\n";
 
                 //check if BB has only one predecessor
                 if ((uniqPrev = BB->getUniquePredecessor()) != NULL){
-                    errs()<<"UNIQUE "<<(string)uniqPrev->getName()<<"\n";
+                    //errs()<<"UNIQUE "<<(string)uniqPrev->getName()<<"\n";
                     if_in = getBBInstFactOut(uniqPrev);
                 }
                 //if it has more than one predecessor then join them all
                 else {
-                    errs()<<"MULTIPLE\n";
+                    set<Instruction*> predecessors;
+                    //errs()<<"MULTIPLE\n";
                     for (pred_iterator it = pred_begin(BB), et = pred_end(BB); it != et; ++it)
                     {
                         BasicBlock* prevBB = *it;
-                        errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
-                        if_tmp = getBBInstFactOut(prevBB);
-                        if_in = join (if_in, if_tmp);
+                        //errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
+                        //if_tmp = getBBInstFactOut(prevBB);
+                        //if_in = join (if_in, if_tmp);
+                        predecessors.insert(prevBB->getTerminator());
                     }
+                    if_in = joinAllPredecessors(predecessors);
                 }
 
                 //run the flow function for each instruction in the basic block
                 for (BasicBlock::iterator I = BB->begin(), IE = BB->end(); I != IE; I++){
-                    errs()<<"ITERATION\n";
+                    //errs()<<"ITERATION\n";
 
                     inst = &*I;
                     string opname = inst->getOpcodeName();
@@ -228,14 +254,13 @@ namespace {
 
                 //if the OUT of the last instruction in the bb has changed then add all successors to the worklist
                 if (isBBOutChanged){
-                    errs()<<"Things changed. Scheduling successors\n";
+                    //errs()<<"Things changed. Scheduling successors\n";
                     for (succ_iterator it = succ_begin(BB), et = succ_end(BB); it != et; ++it)
                     {
                         BasicBlock* succBB = *it;
-                        errs()<<"Successor: "<<succBB->getName()<<"\n";
+                        //errs()<<"Successor: "<<succBB->getName()<<"\n";
                         //bbQueue.push(succBB);
-                        pair<set<BasicBlock*>::iterator,bool> t_p = bbQueue.insert(succBB);
-                        if (!t_p.second) errs() <<"Already exists\n";
+                        bbQueue.insert(succBB);
                     }
                 }
             }
@@ -246,7 +271,7 @@ namespace {
             Instruction *I;
             I = BB->getTerminator();
 
-            errs()<<"Terminator: "<<*I<<"\n";
+            //errs()<<"Terminator: "<<*I<<"\n";
 
             //return dataFlowFactsMap.getInsFact(NULL);
             //return dataFlowFactsMap.getInsFact(I);
