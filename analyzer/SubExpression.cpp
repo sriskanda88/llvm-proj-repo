@@ -74,6 +74,9 @@ namespace {
                     break;
                 }
                 case X_Eq_Y_Op_Z:
+                case X_Eq_Y_Op_C:
+                case X_Eq_C_Op_Z:
+                case X_Eq_C_Op_C:
                 {
                     //errs() << "X = Y op Z\n";
                     //create a string of the form Y op Z
@@ -83,24 +86,20 @@ namespace {
                     return dataFlowFactsMap.setInsFact(inst, dff_in);
                     break;
                 }
-                case X_Eq_Y_Op_C:
+                case X_Eq_Y:
                 {
-                    //errs() << "X = Y op C\n";
+                    // Get Y
+                    // Look in map for Y
+                    // If it has result then insert X 
+                    // in the map with same result
                     return dataFlowFactsMap.setInsFact(inst, dff_in);
                     break;
                 }
-                case X_Eq_C_Op_Z:
+                case X_Eq_C:
+                case X_Eq_Addr_Y: //mem2reg pass saves us from this
+                case X_Eq_Star_Y: //mem2reg pass saves us from this
+                case Star_X_Eq_Y: //mem2reg pass saves us from this
                 {
-                    //errs() << "X = C op Z\n";
-                    return dataFlowFactsMap.setInsFact(inst, dff_in);
-                    break;
-                }
-                case X_Eq_C_Op_C:
-                {
-                    //errs() << "X = C op C\n";
-                    string entry = createYopZString(inst);
-                    string variable = (string)inst->getName();
-                    (*dff_in)[variable].insert(entry);
                     return dataFlowFactsMap.setInsFact(inst, dff_in);
                     break;
                 }
@@ -213,7 +212,6 @@ namespace {
                 
                 BasicBlock* uniqPrev = NULL;
                 InstFact* if_in = new InstFact;
-                InstFact* if_tmp = new InstFact;
                 Instruction* inst;
                 bool isBBOutChanged;
 
@@ -232,8 +230,6 @@ namespace {
                     {
                         BasicBlock* prevBB = *it;
                         //errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
-                        //if_tmp = getBBInstFactOut(prevBB);
-                        //if_in = join (if_in, if_tmp);
                         predecessors.insert(prevBB->getTerminator());
                     }
                     if_in = joinAllPredecessors(predecessors);
