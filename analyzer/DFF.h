@@ -14,7 +14,6 @@ class DFF {
 	typedef map<string, set<T> > InstFact;
 	typedef map <Instruction*, InstFact* > DATA_FLOW_FACT;
 	typedef typename map<string, set<T> >::iterator InstFact_IT;
-	typedef typename set<T>::iterator SET_IT;
 
         enum setType { FULL, EMPTY, REGULAR };
 
@@ -49,6 +48,7 @@ class DFF {
         } 
 
     public:
+	typedef typename set<T>::iterator SET_IT;
 	DFF() {
 	    isFirstElement = true;
 	};
@@ -265,7 +265,41 @@ class DFF {
         bool isEmptySet(Instruction* inst) {
             return (typeDescription[inst] == EMPTY);
         }
- 
+
+
+        // static functions
+        // check to see if variable exists within the given instruction fact passed in
+        static bool exists(InstFact* if_in, string key)
+        {
+            return if_in->count(key) != 0;
+        }
+
+        // same as above, but just for a temp instruction fact, not a full DFF
+        static void setVarFact(InstFact* in_if, string var_id, T value)
+        {
+            if( (*in_if).count(var_id) == 0)
+            {
+                errs() << "Doesn't exist... we need to add it in!\n";
+                std::set<T> tempSet;
+                tempSet.insert(value);
+
+                errs() << "created temp set..\n";
+
+                (*in_if).insert(std::pair<string,set<T> >(var_id, tempSet));
+                errs() << "Done inserting into map.\n";
+            } else {
+                (*in_if)[var_id].insert(value);
+            }
+            //TODO: handle empty/full sets...
+        }
+
+        // same as above, just for a temp instruction fact, not a full DFF
+        static void removeVarFacts(InstFact* in_if, string var_id)
+        {
+            in_if->erase(var_id);
+            //TODO: handle empty/full sets...
+        }
+
 };
 
 #endif
