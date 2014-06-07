@@ -89,7 +89,7 @@ namespace{
                     continue;
                 // If the incoming value is not a constant, then give up.
                 Constant *C2 = dyn_cast<Constant>(Incoming);
-                if (!C)
+                if (!C2)
                     return dataFlowFactsMap.setInsFact(inst, if_in);
                 // Fold the PHI's operands.
                 if (ConstantExpr *NewC = dyn_cast<ConstantExpr>(C2))
@@ -211,7 +211,7 @@ namespace{
         // now that we know the variable we kill the original
         if(DFF<int>::exists(if_in, varID))
         {
-            errs() << "ERROR: there was already a mapping in the DFF, so we will remove it. NOTE: In SSA this should never happen!\n";
+            //errs() << "ERROR: there was already a mapping in the DFF, so we will remove it. NOTE: In SSA this should never happen!\n";
             //DFF<int>::removeVarFacts(if_in, varID);
             (*if_in)[varID].erase((*if_in)[varID].begin(), (*if_in)[varID].end());
         }
