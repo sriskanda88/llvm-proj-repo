@@ -68,7 +68,7 @@ namespace {
                 case X_Eq_NEW:
                     {
                         string var = (string)inst->getName();
-                        string summary = "summary_" + var;
+                        string summary = "S(" + var + ")";
                         (*dff_in)[var].insert(summary);
                         return dataFlowFactsMap.setInsFact(inst, dff_in);
                         break;
@@ -98,18 +98,33 @@ namespace {
                         string Y_var_name_1 = (string) Y_var_1->getName();
 
                         if (Y_var_name_1 != ""){
-
                             string str_inst = createInstString(inst);
                             int pos = str_inst.find("%") + 1;
                             int pos1 = str_inst.find(" = ");
-                            string variable = str_inst.substr(pos, pos1 - pos);
+                            string X_var_name_1 = str_inst.substr(pos, pos1 - pos);
+                            // Look in map for Y
+                            set<string> tempSet1 = (*dff_in)[Y_var_name_1];
 
-                            (*dff_in)[variable].insert(Y_var_name_1);
+                            (*dff_in)[X_var_name_1].insert(tempSet1.begin(), tempSet1.end());
                         }
                         return dataFlowFactsMap.setInsFact(inst, dff_in);
                         break;
                     }
                 case PHI:
+                    {
+                        //errs()<<"PHI :: I : "<<inst->getName()<<", X : "<<inst->getOperand(0)->getName()<<", Y : "<<inst->getOperand(1)->getName()<<"\n";
+                        string phi_name = inst->getName();
+                        string X_var_name_2 = inst->getOperand(0)->getName();
+                        string Y_var_name_2 = inst->getOperand(1)->getName();
+
+                        set<string> tempSet2 = (*dff_in)[X_var_name_2];
+                        set<string> tempSet3 = (*dff_in)[Y_var_name_2];
+                        (*dff_in)[phi_name].insert(tempSet2.begin(), tempSet2.end());
+                        (*dff_in)[phi_name].insert(tempSet3.begin(), tempSet3.end());
+
+                        return dataFlowFactsMap.setInsFact(inst, dff_in);
+                        break;
+                    }
                 case X_Eq_Y_Op_Z:
                 case X_Eq_Y_Op_C:
                 case X_Eq_C_Op_Z:
@@ -134,18 +149,18 @@ namespace {
 
         virtual InstFact* join (InstFact* inst_a, InstFact* inst_b) {
             //errs() <<"Join\n";
-            return dataFlowFactsMap.intersectFacts(inst_a, inst_b);
+            return dataFlowFactsMap.unionFacts(inst_a, inst_b);
         }
 
         virtual void setBottom(Instruction* inst) {
             //errs() <<"SetBottom\n";
             //Bottom: Full Set
-            dataFlowFactsMap.setFactFullSet(inst);
+            dataFlowFactsMap.setFactEmptySet(inst);
         }
 
         virtual void setTop(Instruction* inst) {
             //errs() << "setTop called with "<<inst<<"\n";
-            dataFlowFactsMap.setFactEmptySet(inst);
+            dataFlowFactsMap.setFactFullSet(inst);
         }
 
         InstFact* joinAllPredecessors(set<Instruction*> predecessors) {
@@ -300,11 +315,11 @@ namespace {
                 //if it has more than one predecessor then join them all
                 else {
                     set<Instruction*> predecessors;
-                    //errs()<<"MULTIPLE\n";
+                    errs()<<"########### MULTIPLE ##############\n";
                     for (pred_iterator it = pred_begin(BB), et = pred_end(BB); it != et; ++it)
                     {
                         BasicBlock* prevBB = *it;
-                        //errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
+                        errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
                         Instruction* in_temp = prevBB->getTerminator();
                         if (dataFlowFactsMap.isFullSet(in_temp)) continue;
                         predecessors.insert(in_temp);
