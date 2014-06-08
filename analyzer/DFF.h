@@ -86,7 +86,6 @@ class DFF {
                 return;
             }
 	    InstFact* fact = getInsFact(ins_id); 
-            ins_id->dump();
 	    cout <<"    "<<ins_id << ": { ";
 	    isFirstElement = true;
 	    for (InstFact_IT it=fact->begin(); it!=fact->end(); ++it) {
