@@ -203,6 +203,11 @@ namespace{
         // and insert it into the temp map
         (*if_in)[varID].insert(inputInt);
 
+        // now we will actually replace the instruction with this constant!
+        errs() << "Since we know this instruction (" << varID << ") evaluates to a constant, we will replace it with " << inputInt << ".\n";
+        inst->replaceAllUsesWith(constInt);
+        //inst->eraseFromParent();
+
         // finally place this into the DFF and check if it differs from the previous
         return dataFlowFactsMap.setInsFact(inst, if_in);
     }
