@@ -58,6 +58,8 @@ namespace{
         // the first thing we need to do is check to see if it's a PHI node
         if(PHINode *PN = dyn_cast<PHINode>(inst))
         {
+return dataFlowFactsMap.setInsFact(inst, if_in);
+
             for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
                 Value *Incoming = PN->getIncomingValue(i);
                 // If the incoming value is undef then skip it.  Note that while we could
