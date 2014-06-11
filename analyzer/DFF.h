@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <iostream>
+#include <limits>
 #include "llvm/IR/Instruction.h"
 using namespace std;
 using namespace llvm;
@@ -218,6 +219,82 @@ class DFF {
                 set2 = (*map2)[*it];
                 (*result)[*it].insert(set1.begin(), set1.end());
                 (*result)[*it].insert(set2.begin(), set2.end());
+            }
+
+            return result;
+        }     
+
+        InstFact* unionFacts (InstFact* map1, InstFact* map2, bool rangeAnalysis) {
+            //get all the keys from both maps into a set (Avoids duplicates)
+            set<string> allKeys;
+            for (InstFact_IT it=map1->begin(); it!=map1->end(); ++it) {
+                string var = it->first;
+                allKeys.insert(var);
+                errs() << "inserting key in allkeys from map1.\n";
+            }
+            for (InstFact_IT it=map2->begin(); it!=map2->end(); ++it) {
+                string var = it->first;
+                allKeys.insert(var);
+                errs() << "inserting key in allkeys from map2.\n";
+            }
+
+            //Begin merging
+            InstFact* result = new InstFact;
+            for (typename set<string>::iterator it=allKeys.begin(); it!=allKeys.end(); ++it) { 
+                errs() << "inside for loop...\n";
+                set<T> set1, set2;
+                set1 = (*map1)[*it];
+                set2 = (*map2)[*it];
+                int newMin = 0;
+                int newMax = 0;
+                errs() << "after var creation\n";
+
+                if(rangeAnalysis)
+                {
+                    errs() << "we are doing range analysis\n";
+
+                    int set1Min = std::numeric_limits<int>::max();
+                    int set1Max = std::numeric_limits<int>::min();
+                    int set2Min = std::numeric_limits<int>::max();
+                    int set2Max = std::numeric_limits<int>::min();
+
+                    errs() << "we are looking at: " << *it << ".\n";
+
+                    if((*map1).count(*it) != 0)
+                    {
+
+                        errs() << "map1 count != 0. count is: " << (*map1).count(*it) << "\n";
+                        set1Min = *set1.begin();
+                        set1Max = *(++set1.begin());
+                        errs() << "after incrementing set.\n";
+                    }
+
+                    if((*map2).count(*it) != 0)
+                    {
+                        errs() << "the count is: " << (*map2).count(*it) << "\n";
+                        errs() << "map2 count != 0. The value of min is: " << *set2.begin() << "\n";
+                        set2Min = *set2.begin();
+                        errs() << "map2 set min, ok. Now set max\n" << " the value of max should be: " << *(++set2.begin()) << "\n";
+                        set2Max = *(++set2.begin());
+                        errs() << "after incrementing set.\n";
+                    }
+
+                    errs() << "set1 min/max: " << set1Min << "/" << set1Max << ", set2 min/max: " << set2Min << "/" << set2Max << ".\n\n";
+                    if(set1Min < set2Min)
+                        newMin = set1Min;
+                    else
+                        newMin = set2Min;
+
+                    if(set1Max > set2Max)
+                        newMax = set1Max;
+                    else
+                        newMax = set2Max;
+                }
+                errs() << "final min/max is: " << newMin << "/" << newMax << ",\n";
+                (*result)[*it].insert(newMin);
+                (*result)[*it].insert(newMax);
+
+                errs() << "sanity check: index0/index1 is - " << *(*result)[*it].begin() << "/" << *(++(*result)[*it].begin()) << ".\n";
             }
 
             return result;
