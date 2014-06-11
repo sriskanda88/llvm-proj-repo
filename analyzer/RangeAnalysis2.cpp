@@ -105,9 +105,17 @@ namespace{
             (*if_in)[varID].insert(min);
             (*if_in)[varID].insert(max);
 
-            errs() << "just inserted: " << *(*if_in)[varID].begin() << " and " << *(++(*if_in)[varID].begin()) << "\n";
+            //errs() << "just inserted: " << *(*if_in)[varID].begin() << " and " << *(++(*if_in)[varID].begin()) << "\n";
 
             // finally place this into the DFF and check if it differs from the previous 
+
+            if(min == MIN && max == MAX)
+            {
+                //errs() << "setting instruction to fullset!!!\n\n";
+                dataFlowFactsMap.setFactFullSet(inst);
+                return dataFlowFactsMap.setInsFact(inst, if_in, false);
+            }
+
             return dataFlowFactsMap.setInsFact(inst, if_in);
         }
 
@@ -324,7 +332,7 @@ namespace{
 
         InstFact* join (InstFact* a, InstFact* b)
         {  
-            errs() << "performing a join!!!\n";
+            //errs() << "performing a join!!!\n";
             return dataFlowFactsMap.unionFacts(a,b, true);
             //return dataFlowFactsMap.unionFacts(a,b);
         }   
@@ -357,19 +365,19 @@ namespace{
             bool first = true;
             for (set<Instruction*>::iterator it=predecessors.begin(); it!=predecessors.end(); ++it) {
                 if (first) {
-                    errs() << "~~~~~~~ first.\n";
+                    //errs() << "~~~~~~~ first.\n";
                     result = dataFlowFactsMap.getTempFact(*it);
                     first = false;
-                    errs() << "after first.\n";
+                    //errs() << "after first.\n";
                 }   
                 else {
-                    errs() << "~~~~~~~ else.\n";
+                    //errs() << "~~~~~~~ else.\n";
                     InstFact* if_tmp = dataFlowFactsMap.getTempFact(*it);
-                    errs() << "after getTemp.\n";
+                    //errs() << "after getTemp.\n";
                     result = join(result,if_tmp);
-                    errs() << "after join call.\n"; 
+                    //errs() << "after join call.\n"; 
                 } 
-                errs() << "1.\n";
+                //errs() << "1.\n";
             }   
             return result;
         } 
@@ -378,11 +386,11 @@ namespace{
         //The worklist algorithm that runs the flow on the entire procedure
         void runWorkList(Function &F){
 
-                errs() << "0.\n";
+                //errs() << "0.\n";
             populateBBQueue(F);
 
             while (!bbQueue.empty()){
-                errs() << "!empty.\n";
+                //errs() << "!empty.\n";
                 set<BasicBlock*>::iterator BB_it = bbQueue.begin();
                 BasicBlock* BB = *BB_it;
                 bbQueue.erase(BB_it);
@@ -417,12 +425,12 @@ namespace{
                     isBBOutChanged = flowFunction(I, if_in);
 
                     if_in = dataFlowFactsMap.getTempFact(inst);
-                    errs() << "completed an instruction.\n";
+                    //errs() << "completed an instruction.\n";
                 }
 
                 //if the OUT of the last instruction in the bb has changed then add all successors to the worklist
                 if (isBBOutChanged){
-                    errs() << "BBOut was changed!\n";
+                    //errs() << "BBOut was changed!\n";
                     for (succ_iterator it = succ_begin(BB), et = succ_end(BB); it != et; ++it)
                     {
                         BasicBlock* succBB = *it;
