@@ -44,7 +44,7 @@ namespace {
         }
 
         virtual bool runOnFunction (Function &F) {
-            errs() << "RunOnFunction "<<(F.getName()).str()<<"\n";
+            errs() << "############ RunOnFunction "<<(F.getName()).str()<<" ##############\n";
             runWorkList(F);
             //dataFlowFactsMap.printEverything();
 
@@ -93,20 +93,29 @@ namespace {
                     }
                 case X_Eq_Addr_Y:
                     {
-                        LoadInst *li = dyn_cast<LoadInst>(inst);
-                        Value* Y_var_1 = li->getOperand(0);
+                        GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(inst);
+                        Value* Y_var_1 = gepInst->getOperand(0);
                         string Y_var_name_1 = (string) Y_var_1->getName();
+                        string X_var_name_1 = inst->getName();
 
-                        if (Y_var_name_1 != ""){
-                            string str_inst = createInstString(inst);
-                            int pos = str_inst.find("%") + 1;
-                            int pos1 = str_inst.find(" = ");
-                            string X_var_name_1 = str_inst.substr(pos, pos1 - pos);
-                            // Look in map for Y
-                            set<string> tempSet1 = (*dff_in)[Y_var_name_1];
+                        // Look in map for Y
+                        set<string> tempSet1 = (*dff_in)[Y_var_name_1];
+                        (*dff_in)[X_var_name_1].insert(tempSet1.begin(), tempSet1.end());
 
-                            (*dff_in)[X_var_name_1].insert(tempSet1.begin(), tempSet1.end());
-                        }
+                        //LoadInst *li = dyn_cast<LoadInst>(inst);
+                        //Value* Y_var_1 = li->getOperand(0);
+                        //string Y_var_name_1 = (string) Y_var_1->getName();
+
+                        //if (Y_var_name_1 != ""){
+                        //string str_inst = createInstString(inst);
+                        //int pos = str_inst.find("%") + 1;
+                        //int pos1 = str_inst.find(" = ");
+                        //string X_var_name_1 = str_inst.substr(pos, pos1 - pos);
+                        //// Look in map for Y
+                        //set<string> tempSet1 = (*dff_in)[Y_var_name_1];
+
+                        //(*dff_in)[X_var_name_1].insert(tempSet1.begin(), tempSet1.end());
+                        //}
                         return dataFlowFactsMap.setInsFact(inst, dff_in);
                         break;
                     }
@@ -201,13 +210,13 @@ namespace {
                 return X_Eq_NEW;
             }
 
-            if ( LoadInst *loadInst = dyn_cast<LoadInst>(inst)){
-                Value *firstOp = loadInst->getOperand(0);
-                Type *t = firstOp->getType();
-                if (t->isPointerTy()){
-                    errs()<<"X_Eq_Addr_Y\n";
-                    return X_Eq_Addr_Y;
-                }
+            if (isa<GetElementPtrInst>(inst)){
+                //Value *firstOp = loadInst->getOperand(0);
+                //Type *t = firstOp->getType();
+                //if (t->isPointerTy()){
+                errs()<<"X_Eq_Addr_Y\n";
+                return X_Eq_Addr_Y;
+                //}
             }
 
             //if ( StoreInst *storeInst = dyn_cast<StoreInst>(inst)) {
@@ -288,6 +297,23 @@ namespace {
             }
         }
 
+        InstFact* addFunctionArgsToInstructionMap (Instruction *inst, Function &F){
+            Argument *arg = NULL;
+            InstFact *if_in =  dataFlowFactsMap.getTempFact(inst);
+
+            for(Function::arg_iterator AR = F.arg_begin(), AE = F.arg_end(); AR != AE; AR++){
+                arg = &*AR;
+                Type* ty = arg->getType();
+                if (ty->isPointerTy()){
+                    string arg_name = arg->getName();
+                    string summary = "S(" + arg_name + ")";
+                    (*if_in)[arg_name].insert(summary);
+                }
+            }
+
+            return if_in;
+        }
+
         //The worklist algorithm that runs the flow on the entire procedure
         void runWorkList(Function &F){
 
@@ -305,26 +331,38 @@ namespace {
                 Instruction* inst;
                 bool isBBOutChanged;
 
-                errs() << "Working on "<<(string)BB->getName()<<"\n";
+                errs() << "########### Working on "<<(string)BB->getName()<<" ###############\n";
 
                 //check if BB has only one predecessor
                 if ((uniqPrev = BB->getUniquePredecessor()) != NULL){
-                    //errs()<<"UNIQUE "<<(string)uniqPrev->getName()<<"\n";
+                    //errs()<<"UNIQUE PREDECESSOR "<<(string)uniqPrev->getName()<<"\n";
                     if_in = getBBInstFactOut(uniqPrev);
                 }
-                //if it has more than one predecessor then join them all
+                //if it has NONE then use function args; if i t has many then join them all
                 else {
-                    set<Instruction*> predecessors;
-                    errs()<<"########### MULTIPLE ##############\n";
-                    for (pred_iterator it = pred_begin(BB), et = pred_end(BB); it != et; ++it)
-                    {
-                        BasicBlock* prevBB = *it;
-                        errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
-                        Instruction* in_temp = prevBB->getTerminator();
-                        if (dataFlowFactsMap.isFullSet(in_temp)) continue;
-                        predecessors.insert(in_temp);
+                    pred_iterator it = pred_begin(BB), et = pred_end(BB);
+
+                    if (it == et){
+                        //errs()<<"########### NO PREDECESSORS ##############\n";
+                        //Add function arguments to the map for the first instruction of the first basic block
+                        Instruction* firstInst = (&*BB->begin());
+                        if_in = addFunctionArgsToInstructionMap (firstInst, F);
                     }
-                    if_in = joinAllPredecessors(predecessors);
+                    else{
+                        //errs()<<"########### MULTIPLE PREDECESSORS ##############\n";
+                        set<Instruction*> predecessors;
+                        for (;it != et; ++it)
+                        {
+                            BasicBlock* prevBB = *it;
+                            errs()<<"PREDECESSOR: "<<(string)prevBB->getName()<<"\n";
+                            Instruction* in_temp = prevBB->getTerminator();
+                            if (dataFlowFactsMap.isFullSet(in_temp)){
+
+                            }
+                            predecessors.insert(in_temp);
+                        }
+                        if_in = joinAllPredecessors(predecessors);
+                    }
                 }
 
                 //run the flow function for each instruction in the basic block
