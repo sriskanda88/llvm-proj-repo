@@ -155,6 +155,21 @@ class DFF {
                 return true;
             } 
         }
+        bool setInsFact (Instruction* ins_id, InstFact* new_fact, bool update) {
+            if(update)
+                typeDescription[ins_id] = REGULAR;
+            InstFact* prev_fact;
+            if (exists(ins_id)) {
+                prev_fact = getInsFact(ins_id);
+                dffMap[ins_id] = new_fact;
+                return (!(compareMaps(prev_fact, new_fact)));
+            }
+            else {
+                dffMap[ins_id] = new_fact;
+                return true;
+            } 
+        }
+
 
         // Clones the previous instruction into a placeholder and returns it. 
         // Does not modify the map structure. We can modify the returned map 
@@ -225,61 +240,64 @@ class DFF {
         }     
 
         InstFact* unionFacts (InstFact* map1, InstFact* map2, bool rangeAnalysis) {
+            
+            // temp var to store result
+            InstFact* result = new InstFact;
+
             //get all the keys from both maps into a set (Avoids duplicates)
             set<string> allKeys;
             for (InstFact_IT it=map1->begin(); it!=map1->end(); ++it) {
                 string var = it->first;
                 allKeys.insert(var);
-                errs() << "inserting key in allkeys from map1.\n";
+                //errs() << "inserting key in allkeys from map1.\n";
             }
             for (InstFact_IT it=map2->begin(); it!=map2->end(); ++it) {
                 string var = it->first;
                 allKeys.insert(var);
-                errs() << "inserting key in allkeys from map2.\n";
+                //errs() << "inserting key in allkeys from map2.\n";
             }
 
             //Begin merging
-            InstFact* result = new InstFact;
             for (typename set<string>::iterator it=allKeys.begin(); it!=allKeys.end(); ++it) { 
-                errs() << "inside for loop...\n";
+                //errs() << "inside for loop...\n";
                 set<T> set1, set2;
                 set1 = (*map1)[*it];
                 set2 = (*map2)[*it];
                 int newMin = 0;
                 int newMax = 0;
-                errs() << "after var creation\n";
+                //errs() << "after var creation\n";
 
                 if(rangeAnalysis)
                 {
-                    errs() << "we are doing range analysis\n";
+                    //errs() << "we are doing range analysis\n";
 
                     int set1Min = std::numeric_limits<int>::max();
                     int set1Max = std::numeric_limits<int>::min();
                     int set2Min = std::numeric_limits<int>::max();
                     int set2Max = std::numeric_limits<int>::min();
 
-                    errs() << "we are looking at: " << *it << ".\n";
+                    //errs() << "we are looking at: " << *it << ".\n";
 
                     if((*map1).count(*it) != 0)
                     {
 
-                        errs() << "map1 count != 0. count is: " << (*map1).count(*it) << "\n";
+                        //errs() << "map1 count != 0. count is: " << (*map1).count(*it) << "\n";
                         set1Min = *set1.begin();
                         set1Max = *(++set1.begin());
-                        errs() << "after incrementing set.\n";
+                        //errs() << "after incrementing set.\n";
                     }
 
                     if((*map2).count(*it) != 0)
                     {
-                        errs() << "the count is: " << (*map2).count(*it) << "\n";
-                        errs() << "map2 count != 0. The value of min is: " << *set2.begin() << "\n";
+                        //errs() << "the count is: " << (*map2).count(*it) << "\n";
+                        //errs() << "map2 count != 0. The value of min is: " << *set2.begin() << "\n";
                         set2Min = *set2.begin();
-                        errs() << "map2 set min, ok. Now set max\n" << " the value of max should be: " << *(++set2.begin()) << "\n";
+                        //errs() << "map2 set min, ok. Now set max\n" << " the value of max should be: " << *(++set2.begin()) << "\n";
                         set2Max = *(++set2.begin());
-                        errs() << "after incrementing set.\n";
+                        //errs() << "after incrementing set.\n";
                     }
 
-                    errs() << "set1 min/max: " << set1Min << "/" << set1Max << ", set2 min/max: " << set2Min << "/" << set2Max << ".\n\n";
+                    //errs() << "set1 min/max: " << set1Min << "/" << set1Max << ", set2 min/max: " << set2Min << "/" << set2Max << ".\n\n";
                     if(set1Min < set2Min)
                         newMin = set1Min;
                     else
@@ -290,11 +308,11 @@ class DFF {
                     else
                         newMax = set2Max;
                 }
-                errs() << "final min/max is: " << newMin << "/" << newMax << ",\n";
+                //errs() << "final min/max is: " << newMin << "/" << newMax << ",\n";
                 (*result)[*it].insert(newMin);
                 (*result)[*it].insert(newMax);
 
-                errs() << "sanity check: index0/index1 is - " << *(*result)[*it].begin() << "/" << *(++(*result)[*it].begin()) << ".\n";
+                //errs() << "sanity check: index0/index1 is - " << *(*result)[*it].begin() << "/" << *(++(*result)[*it].begin()) << ".\n";
             }
 
             return result;
@@ -355,14 +373,14 @@ class DFF {
         {
             if( (*in_if).count(var_id) == 0)
             {
-                errs() << "Doesn't exist... we need to add it in!\n";
+                //errs() << "Doesn't exist... we need to add it in!\n";
                 std::set<T> tempSet;
                 tempSet.insert(value);
 
-                errs() << "created temp set..\n";
+                //errs() << "created temp set..\n";
 
                 (*in_if).insert(std::pair<string,set<T> >(var_id, tempSet));
-                errs() << "Done inserting into map.\n";
+                //errs() << "Done inserting into map.\n";
             } else {
                 (*in_if)[var_id].insert(value);
             }
